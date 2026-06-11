@@ -336,18 +336,20 @@ export default function ShiftPage() {
                 </div>
               ))}
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <input type="date" value={newSlot.date} onChange={e=>setNewSlot(p=>({...p,date:e.target.value}))} className="col-span-2 sm:col-span-1 input-base text-sm py-2"/>
-              <input type="time" value={newSlot.startTime} onChange={e=>setNewSlot(p=>({...p,startTime:e.target.value}))} className="input-base text-sm py-2"/>
-              <input type="time" value={newSlot.endTime} onChange={e=>setNewSlot(p=>({...p,endTime:e.target.value}))} className="input-base text-sm py-2"/>
-              <div className="flex gap-2">
-                <div className="flex items-center gap-1 input-base text-sm py-2 flex-1">
+            <div className="flex flex-col gap-2">
+              <input type="date" value={newSlot.date} onChange={e=>setNewSlot(p=>({...p,date:e.target.value}))} className="input-base text-sm py-3"/>
+              <div className="grid grid-cols-2 gap-2">
+                <input type="time" value={newSlot.startTime} onChange={e=>setNewSlot(p=>({...p,startTime:e.target.value}))} className="input-base text-sm py-3"/>
+                <input type="time" value={newSlot.endTime} onChange={e=>setNewSlot(p=>({...p,endTime:e.target.value}))} className="input-base text-sm py-3"/>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="flex items-center gap-2 input-base text-sm py-3">
                   <input type="number" min={1} max={99} value={newSlot.requiredCount}
                     onChange={e=>setNewSlot(p=>({...p,requiredCount:Math.max(1,Number(e.target.value))}))}
-                    className="w-12 text-center bg-transparent outline-none font-bold text-indigo-600"/>
-                  <span className="text-slate-400 text-xs">人</span>
+                    className="w-14 text-center bg-transparent outline-none font-bold text-indigo-600 text-base"/>
+                  <span className="text-slate-400 text-sm">人必要</span>
                 </div>
-                <button onClick={addSlot} className="btn-primary text-sm py-2 px-4 whitespace-nowrap">追加</button>
+                <button onClick={addSlot} className="btn-primary text-sm py-3 w-full">＋ 追加</button>
               </div>
             </div>
             {editSlots.length>0 && <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-xl p-3 mt-3">⚠️ 日程を変更すると既存の参加者の希望がリセットされます。</p>}
