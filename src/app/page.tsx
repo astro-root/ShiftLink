@@ -50,7 +50,7 @@ export default function Home() {
         body: JSON.stringify({ title: title.trim() || '新しいシフト' }),
       });
       if (!res.ok) throw new Error();
-      router.push(`/shifts/${(await res.json()).editToken}`);
+      router.push(`/shifts/${(await res.json()).token}`);
     } catch { setErr('作成に失敗しました。もう一度お試しください。'); setCreating(false); }
   };
 
