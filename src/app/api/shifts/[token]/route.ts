@@ -1,69 +1,139 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { v4 as uuidv4 } from 'uuid';
-import { getDb } from '@/lib/db';
+import { NextResponse } from 'next/server'
+import { randomUUID } from 'crypto'
+import { getDB } from '@/lib/db'
 
-type Ctx = { params: { token: string } };
+export const dynamic = 'force-dynamic'
 
-export async function GET(_req: NextRequest, { params }: Ctx) {
+type Params = { params: { token: string } }
+
+export async function GET(_req: Request, { params }: Params) {
   try {
-    const db = getDb();
-    const shift = db.prepare(
-      'SELECT * FROM shifts WHERE edit_token = ? OR view_token = ?'
-    ).get(params.token, params.token) as any;
-    if (!shift) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    const db = await getDB()
+    const res = await db.execute({
+      sql: 'SELECT * FROM shifts WHERE token = ? OR view_token = ?',
+      args: [params.token, params.token],
+    })
+    const shift = res.rows[0]
+    if (!shift) return NextResponse.json({ error: 'シフトが見つかりません' }, { status: 404 })
 
-    const isEditor = shift.edit_token === params.token;
-    const staff    = db.prepare('SELECT id, name FROM staff WHERE shift_id = ?').all(shift.id) as any[];
-    const slots    = db.prepare('SELECT * FROM slots WHERE shift_id = ? ORDER BY date, start_time').all(shift.id) as any[];
-    const prefs    = db.prepare('SELECT p.staff_id, p.slot_id, p.status FROM preferences p JOIN staff s ON s.id = p.staff_id WHERE s.shift_id = ?').all(shift.id) as any[];
-    const props    = db.prepare('SELECT * FROM proposals WHERE shift_id = ? ORDER BY id').all(shift.id) as any[];
+    const isViewOnly = shift.view_token === params.token && shift.token !== params.token
+
+    const slotsRes = await db.execute({
+      sql: 'SELECT * FROM slots WHERE shift_id = ? ORDER BY date, time_range',
+      args: [shift.id],
+    })
+    const participantsRes = await db.execute({
+      sql: 'SELECT * FROM participants WHERE shift_id = ? ORDER BY created_at',
+      args: [shift.id],
+    })
+    const proposalsRes = await db.execute({
+      sql: 'SELECT * FROM proposals WHERE shift_id = ? ORDER BY created_at DESC',
+      args: [shift.id],
+    })
+
+    const slots = slotsRes.rows
+    let availabilities: any[] = []
+    if (slots.length > 0) {
+      const ph = slots.map(() => '?').join(',')
+      const avRes = await db.execute({
+        sql: `SELECT * FROM availabilities WHERE slot_id IN (${ph})`,
+        args: slots.map(s => s.id),
+      })
+      availabilities = avRes.rows
+    }
+
+    const participants = participantsRes.rows.map(p => ({
+      id: p.id,
+      name: p.name,
+      createdAt: p.created_at,
+      availabilities: availabilities
+        .filter(a => a.participant_id === p.id)
+        .reduce((acc: Record<string, string>, a) => {
+          acc[String(a.slot_id)] = a.status as string
+          return acc
+        }, {}),
+    }))
 
     return NextResponse.json({
-      isEditor,
-      shift: { id: shift.id, title: shift.title, editToken: isEditor ? shift.edit_token : null, viewToken: isEditor ? shift.view_token : null },
-      staff:       staff.map(s => ({ id: s.id, name: s.name })),
-      slots:       slots.map(s => ({ id: s.id, date: s.date, startTime: s.start_time, endTime: s.end_time, requiredCount: s.required_count })),
-      preferences: prefs.map(p => ({ staffId: p.staff_id, slotId: p.slot_id, status: p.status })),
-      proposals:   props.map(p => ({ id: p.id, title: p.title, score: p.score, coverageRate: p.coverage_rate, data: JSON.parse(p.data) })),
-    });
-  } catch (e: unknown) { return NextResponse.json({ error: String(e) }, { status: 500 }); }
+      id: shift.id,
+      token: isViewOnly ? null : shift.token,
+      viewToken: shift.view_token,
+      title: shift.title,
+      isViewOnly,
+      slots: slots.map(s => ({
+        id: s.id,
+        date: s.date,
+        timeRange: s.time_range,
+        requiredCount: s.required_count,
+      })),
+      participants,
+      proposals: proposalsRes.rows.map(p => ({
+        id: p.id,
+        data: JSON.parse(p.proposal_json as string),
+        createdAt: p.created_at,
+      })),
+    })
+  } catch (e) {
+    console.error(e)
+    return NextResponse.json({ error: 'サーバーエラーが発生しました' }, { status: 500 })
+  }
 }
 
-// 管理者: タイトルと時間帯のみ更新 (参加者希望は join エンドポイントで管理)
-export async function PUT(req: NextRequest, { params }: Ctx) {
+export async function PUT(req: Request, { params }: Params) {
   try {
-    const db = getDb();
-    const shift = db.prepare('SELECT id FROM shifts WHERE edit_token = ?').get(params.token) as any;
-    if (!shift) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    const db = await getDB()
+    const res = await db.execute({
+      sql: 'SELECT * FROM shifts WHERE token = ?',
+      args: [params.token],
+    })
+    const shift = res.rows[0]
+    if (!shift) return NextResponse.json({ error: '編集権限がありません' }, { status: 403 })
 
-    const { title, slots } = await req.json() as {
-      title: string;
-      slots: { date: string; startTime: string; endTime: string; requiredCount: number }[];
-    };
-
-    db.exec('BEGIN');
-    try {
-      db.prepare('UPDATE shifts SET title = ? WHERE id = ?').run(title, shift.id);
-      // スロット変更時は既存の参加者希望もリセット (CASCADE で自動削除)
-      db.prepare('DELETE FROM slots WHERE shift_id = ?').run(shift.id);
-      for (const sl of slots) {
-        db.prepare('INSERT INTO slots (shift_id, date, start_time, end_time, required_count) VALUES (?, ?, ?, ?, ?)')
-          .run(shift.id, sl.date, sl.startTime, sl.endTime, sl.requiredCount);
+    const { title, slots } = await req.json()
+    if (title !== undefined) {
+      await db.execute({
+        sql: "UPDATE shifts SET title = ?, updated_at = datetime('now') WHERE id = ?",
+        args: [title.trim(), shift.id],
+      })
+    }
+    if (Array.isArray(slots)) {
+      await db.execute({ sql: 'DELETE FROM slots WHERE shift_id = ?', args: [shift.id] })
+      for (const slot of slots) {
+        await db.execute({
+          sql: 'INSERT INTO slots (shift_id, date, time_range, required_count) VALUES (?, ?, ?, ?)',
+          args: [shift.id, slot.date, slot.timeRange, slot.requiredCount ?? 1],
+        })
       }
-      db.exec('COMMIT');
-    } catch (e) { try { db.exec('ROLLBACK'); } catch {} throw e; }
-
-    return NextResponse.json({ ok: true });
-  } catch (e: unknown) { return NextResponse.json({ error: String(e) }, { status: 500 }); }
+    }
+    return NextResponse.json({ ok: true })
+  } catch (e) {
+    console.error(e)
+    return NextResponse.json({ error: 'サーバーエラーが発生しました' }, { status: 500 })
+  }
 }
 
-export async function PATCH(_req: NextRequest, { params }: Ctx) {
+export async function PATCH(req: Request, { params }: Params) {
   try {
-    const db = getDb();
-    const shift = db.prepare('SELECT id FROM shifts WHERE edit_token = ?').get(params.token) as any;
-    if (!shift) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-    const viewToken = uuidv4();
-    db.prepare('UPDATE shifts SET view_token = ? WHERE id = ?').run(viewToken, shift.id);
-    return NextResponse.json({ viewToken });
-  } catch (e: unknown) { return NextResponse.json({ error: String(e) }, { status: 500 }); }
+    const db = await getDB()
+    const res = await db.execute({
+      sql: 'SELECT * FROM shifts WHERE token = ?',
+      args: [params.token],
+    })
+    const shift = res.rows[0]
+    if (!shift) return NextResponse.json({ error: '編集権限がありません' }, { status: 403 })
+
+    const { action } = await req.json()
+    if (action === 'regenerate_view_token') {
+      const newViewToken = randomUUID()
+      await db.execute({
+        sql: 'UPDATE shifts SET view_token = ? WHERE id = ?',
+        args: [newViewToken, shift.id],
+      })
+      return NextResponse.json({ viewToken: newViewToken })
+    }
+    return NextResponse.json({ error: '不明なアクション' }, { status: 400 })
+  } catch (e) {
+    console.error(e)
+    return NextResponse.json({ error: 'サーバーエラーが発生しました' }, { status: 500 })
+  }
 }

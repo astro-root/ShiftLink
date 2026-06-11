@@ -1,17 +1,25 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { v4 as uuidv4 } from 'uuid';
-import { getDb } from '@/lib/db';
+import { NextResponse } from 'next/server'
+import { randomUUID } from 'crypto'
+import { getDB } from '@/lib/db'
 
-export async function POST(req: NextRequest) {
+export const dynamic = 'force-dynamic'
+
+export async function POST(req: Request) {
   try {
-    const { title } = await req.json();
-    const db = getDb();
-    const editToken = uuidv4();
-    const viewToken = uuidv4();
-    db.prepare('INSERT INTO shifts (title, edit_token, view_token) VALUES (?, ?, ?)')
-      .run(title ?? 'シフト', editToken, viewToken);
-    return NextResponse.json({ editToken, viewToken });
-  } catch (e: unknown) {
-    return NextResponse.json({ error: String(e) }, { status: 500 });
+    const { title } = await req.json()
+    if (!title?.trim()) {
+      return NextResponse.json({ error: 'タイトルを入力してください' }, { status: 400 })
+    }
+    const db = await getDB()
+    const token = randomUUID()
+    const viewToken = randomUUID()
+    await db.execute({
+      sql: 'INSERT INTO shifts (token, view_token, title) VALUES (?, ?, ?)',
+      args: [token, viewToken, title.trim()],
+    })
+    return NextResponse.json({ token, viewToken })
+  } catch (e) {
+    console.error(e)
+    return NextResponse.json({ error: 'サーバーエラーが発生しました' }, { status: 500 })
   }
 }

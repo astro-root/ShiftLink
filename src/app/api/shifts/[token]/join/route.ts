@@ -1,64 +1,84 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getDb } from '@/lib/db';
+import { NextResponse } from 'next/server'
+import { getDB } from '@/lib/db'
 
-type Ctx = { params: { token: string } };
+export const dynamic = 'force-dynamic'
 
-export async function POST(req: NextRequest, { params }: Ctx) {
+type Params = { params: { token: string } }
+
+export async function POST(req: Request, { params }: Params) {
   try {
-    const db = getDb();
-    const shift = db.prepare(
-      'SELECT * FROM shifts WHERE edit_token = ? OR view_token = ?'
-    ).get(params.token, params.token) as any;
-    if (!shift) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    const db = await getDB()
+    const shiftRes = await db.execute({
+      sql: 'SELECT * FROM shifts WHERE token = ? OR view_token = ?',
+      args: [params.token, params.token],
+    })
+    const shift = shiftRes.rows[0]
+    if (!shift) return NextResponse.json({ error: 'シフトが見つかりません' }, { status: 404 })
 
-    const { name, preferences } = await req.json() as {
-      name: string;
-      preferences: { slotId: number; status: string }[];
-    };
-    if (!name?.trim()) return NextResponse.json({ error: '名前を入力してください' }, { status: 400 });
+    const { name, availabilities } = await req.json()
+    if (!name?.trim()) return NextResponse.json({ error: '名前を入力してください' }, { status: 400 })
 
-    const existing = db.prepare(
-      'SELECT id FROM staff WHERE shift_id = ? AND name = ?'
-    ).get(shift.id, name.trim()) as any;
+    const existingRes = await db.execute({
+      sql: 'SELECT id FROM participants WHERE shift_id = ? AND name = ?',
+      args: [shift.id, name.trim()],
+    })
 
-    let staffId: number;
-    if (existing) {
-      staffId = existing.id;
-      db.prepare('DELETE FROM preferences WHERE staff_id = ?').run(staffId);
+    let participantId: number
+    if (existingRes.rows.length > 0) {
+      participantId = Number(existingRes.rows[0].id)
+      await db.execute({
+        sql: 'DELETE FROM availabilities WHERE participant_id = ?',
+        args: [participantId],
+      })
     } else {
-      staffId = Number(
-        db.prepare('INSERT INTO staff (shift_id, name) VALUES (?, ?)').run(shift.id, name.trim()).lastInsertRowid
-      );
+      const insertRes = await db.execute({
+        sql: 'INSERT INTO participants (shift_id, name) VALUES (?, ?)',
+        args: [shift.id, name.trim()],
+      })
+      participantId = Number(insertRes.lastInsertRowid)
     }
 
-    for (const p of preferences) {
-      if (p.status !== 'available') {
-        db.prepare('INSERT OR IGNORE INTO preferences (staff_id, slot_id, status) VALUES (?, ?, ?)')
-          .run(staffId, p.slotId, p.status);
+    if (Array.isArray(availabilities)) {
+      for (const av of availabilities) {
+        if (av.slotId && av.status) {
+          await db.execute({
+            sql: 'INSERT OR REPLACE INTO availabilities (participant_id, slot_id, status) VALUES (?, ?, ?)',
+            args: [participantId, av.slotId, av.status],
+          })
+        }
       }
     }
 
-    return NextResponse.json({ ok: true, staffId });
-  } catch (e: unknown) {
-    return NextResponse.json({ error: String(e) }, { status: 500 });
+    return NextResponse.json({ ok: true, participantId })
+  } catch (e) {
+    console.error(e)
+    return NextResponse.json({ error: 'サーバーエラーが発生しました' }, { status: 500 })
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: Ctx) {
+export async function DELETE(req: Request, { params }: Params) {
   try {
-    const db = getDb();
-    const shift = db.prepare('SELECT id FROM shifts WHERE edit_token = ?').get(params.token) as any;
-    if (!shift) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    const db = await getDB()
+    const shiftRes = await db.execute({
+      sql: 'SELECT * FROM shifts WHERE token = ?',
+      args: [params.token],
+    })
+    const shift = shiftRes.rows[0]
+    if (!shift) return NextResponse.json({ error: '編集権限がありません' }, { status: 403 })
 
-    const staffId = Number(new URL(req.url).searchParams.get('staffId'));
-    if (!staffId) return NextResponse.json({ error: 'staffId required' }, { status: 400 });
+    const { participantId } = await req.json()
+    await db.execute({
+      sql: 'DELETE FROM availabilities WHERE participant_id = ?',
+      args: [participantId],
+    })
+    await db.execute({
+      sql: 'DELETE FROM participants WHERE id = ? AND shift_id = ?',
+      args: [participantId, shift.id],
+    })
 
-    const staff = db.prepare('SELECT id FROM staff WHERE id = ? AND shift_id = ?').get(staffId, shift.id) as any;
-    if (!staff) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-
-    db.prepare('DELETE FROM staff WHERE id = ?').run(staffId);
-    return NextResponse.json({ ok: true });
-  } catch (e: unknown) {
-    return NextResponse.json({ error: String(e) }, { status: 500 });
+    return NextResponse.json({ ok: true })
+  } catch (e) {
+    console.error(e)
+    return NextResponse.json({ error: 'サーバーエラーが発生しました' }, { status: 500 })
   }
 }

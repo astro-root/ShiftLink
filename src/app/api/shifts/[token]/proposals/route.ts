@@ -1,64 +1,75 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getDb } from '@/lib/db';
-import { generateProposals } from '@/lib/algorithm';
+import { NextResponse } from 'next/server'
+import { getDB } from '@/lib/db'
+import { generateProposals } from '@/lib/algorithm'
 
-type Ctx = { params: { token: string } };
+export const dynamic = 'force-dynamic'
 
-export async function POST(_req: NextRequest, { params }: Ctx) {
+type Params = { params: { token: string } }
+
+export async function POST(_req: Request, { params }: Params) {
   try {
-    const db = getDb();
-    const shift = db.prepare('SELECT id FROM shifts WHERE edit_token = ?').get(params.token);
-    if (!shift) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    const db = await getDB()
+    const shiftRes = await db.execute({
+      sql: 'SELECT * FROM shifts WHERE token = ?',
+      args: [params.token],
+    })
+    const shift = shiftRes.rows[0]
+    if (!shift) return NextResponse.json({ error: '編集権限がありません' }, { status: 403 })
 
-    const staffRows = db.prepare('SELECT id, name FROM staff WHERE shift_id = ?').all(shift.id);
-    const slotRows  = db.prepare(
-      'SELECT * FROM slots WHERE shift_id = ? ORDER BY date, start_time'
-    ).all(shift.id);
-    const prefRows  = db.prepare(
-      'SELECT p.staff_id, p.slot_id, p.status FROM preferences p JOIN staff s ON s.id = p.staff_id WHERE s.shift_id = ?'
-    ).all(shift.id);
+    const slotsRes = await db.execute({
+      sql: 'SELECT * FROM slots WHERE shift_id = ? ORDER BY date, time_range',
+      args: [shift.id],
+    })
+    const slots = slotsRes.rows
 
-    if (!staffRows.length || !slotRows.length) {
-      return NextResponse.json(
-        { error: 'スタッフと時間帯を先に登録して保存してください' },
-        { status: 400 }
-      );
+    const participantsRes = await db.execute({
+      sql: 'SELECT * FROM participants WHERE shift_id = ?',
+      args: [shift.id],
+    })
+    const participants = participantsRes.rows
+
+    let availabilities: any[] = []
+    if (slots.length > 0) {
+      const ph = slots.map(() => '?').join(',')
+      const avRes = await db.execute({
+        sql: `SELECT * FROM availabilities WHERE slot_id IN (${ph})`,
+        args: slots.map(s => s.id),
+      })
+      availabilities = avRes.rows
     }
 
-    const proposals = generateProposals(
-      slotRows.map((s: any) => ({
-        id: s.id, date: s.date,
-        startTime: s.start_time, endTime: s.end_time, requiredCount: s.required_count,
+    const proposalInput = {
+      slots: slots.map(s => ({
+        id: Number(s.id),
+        date: s.date as string,
+        timeRange: s.time_range as string,
+        requiredCount: Number(s.required_count),
       })),
-      staffRows.map((s: any) => ({ id: s.id, name: s.name })),
-      prefRows.map((p: any) => ({
-        staffId: p.staff_id, slotId: p.slot_id,
-        status: p.status as 'preferred' | 'available' | 'unavailable',
-      }))
-    );
-
-    db.exec('BEGIN');
-    try {
-      db.prepare('DELETE FROM proposals WHERE shift_id = ?').run(shift.id);
-      for (const p of proposals) {
-        db.prepare(
-          'INSERT INTO proposals (shift_id, title, score, coverage_rate, data) VALUES (?, ?, ?, ?, ?)'
-        ).run(shift.id, p.title, p.score, p.coverageRate, JSON.stringify({ assignments: p.assignments }));
-      }
-      db.exec('COMMIT');
-    } catch (e) {
-      try { db.exec('ROLLBACK'); } catch { /* ignore */ }
-      throw e;
+      participants: participants.map(p => ({
+        id: Number(p.id),
+        name: p.name as string,
+        availabilities: availabilities
+          .filter(a => a.participant_id === p.id)
+          .reduce((acc: Record<string, string>, a) => {
+            acc[String(a.slot_id)] = a.status as string
+            return acc
+          }, {}),
+      })),
     }
 
-    const saved = db.prepare('SELECT * FROM proposals WHERE shift_id = ? ORDER BY id').all(shift.id);
-    return NextResponse.json({
-      proposals: saved.map((p: any) => ({
-        id: p.id, title: p.title, score: p.score, coverageRate: p.coverage_rate,
-        data: JSON.parse(p.data),
-      })),
-    });
-  } catch (e: unknown) {
-    return NextResponse.json({ error: String(e) }, { status: 500 });
+    const proposals = generateProposals(proposalInput)
+
+    await db.execute({ sql: 'DELETE FROM proposals WHERE shift_id = ?', args: [shift.id] })
+    for (const proposal of proposals) {
+      await db.execute({
+        sql: 'INSERT INTO proposals (shift_id, proposal_json) VALUES (?, ?)',
+        args: [shift.id, JSON.stringify(proposal)],
+      })
+    }
+
+    return NextResponse.json({ proposals })
+  } catch (e) {
+    console.error(e)
+    return NextResponse.json({ error: 'サーバーエラーが発生しました' }, { status: 500 })
   }
 }
