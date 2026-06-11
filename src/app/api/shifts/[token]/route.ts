@@ -16,19 +16,19 @@ export async function GET(_req: Request, { params }: Params) {
     const shift = res.rows[0]
     if (!shift) return NextResponse.json({ error: 'シフトが見つかりません' }, { status: 404 })
 
-    const isViewOnly = shift.view_token === params.token && shift.token !== params.token
+    const isViewOnly = String(shift.view_token) === params.token && String(shift.token) !== params.token
 
     const slotsRes = await db.execute({
       sql: 'SELECT * FROM slots WHERE shift_id = ? ORDER BY date, time_range',
-      args: [shift.id],
+      args: [Number(shift.id)],
     })
     const participantsRes = await db.execute({
       sql: 'SELECT * FROM participants WHERE shift_id = ? ORDER BY created_at',
-      args: [shift.id],
+      args: [Number(shift.id)],
     })
     const proposalsRes = await db.execute({
       sql: 'SELECT * FROM proposals WHERE shift_id = ? ORDER BY created_at DESC',
-      args: [shift.id],
+      args: [Number(shift.id)],
     })
 
     const slots = slotsRes.rows
@@ -37,53 +37,68 @@ export async function GET(_req: Request, { params }: Params) {
       const ph = slots.map(() => '?').join(',')
       const avRes = await db.execute({
         sql: `SELECT * FROM availabilities WHERE slot_id IN (${ph})`,
-        args: slots.map(s => s.id),
+        args: slots.map(s => Number(s.id)),
       })
       availabilities = avRes.rows
     }
 
     const participants = participantsRes.rows.map(p => ({
-      id: p.id,
+      id: Number(p.id),
       name: p.name,
       note: p.note ?? '',
       createdAt: p.created_at,
       availabilities: availabilities
-        .filter(a => a.participant_id === p.id)
+        .filter(a => Number(a.participant_id) === Number(p.id))
         .reduce((acc: Record<string, string>, a) => {
-          acc[String(a.slot_id)] = a.status as string
+          acc[String(Number(a.slot_id))] = a.status as string
           return acc
         }, {}),
     }))
 
+    // フロントエンドの setPrefs() が期待する {staffId, slotId, status}[] 形式
+    const preferences = participantsRes.rows.flatMap(p =>
+      availabilities
+        .filter(a => Number(a.participant_id) === Number(p.id))
+        .map(a => ({
+          staffId: Number(p.id),
+          slotId: Number(a.slot_id),
+          status: a.status as string,
+        }))
+    )
+
     return NextResponse.json({
-      id: shift.id,
+      id: Number(shift.id),
       token: isViewOnly ? null : shift.token,
       viewToken: shift.view_token,
       title: shift.title,
       isViewOnly,
       isEditor: !isViewOnly,
       slots: slots.map(s => ({
-        id: s.id,
+        id: Number(s.id),
         date: s.date,
         timeRange: s.time_range,
-        requiredCount: s.required_count,
+        requiredCount: Number(s.required_count),
       })),
       participants,
+      preferences,
       proposals: proposalsRes.rows.map(p => {
-        const d = JSON.parse(p.proposal_json as string);
+        const d = JSON.parse(p.proposal_json as string)
         return {
-          id: p.id,
+          id: Number(p.id),
           title: d.title,
           score: d.score,
           coverageRate: d.coverageRate,
           data: { assignments: d.assignments },
           createdAt: p.created_at,
-        };
+        }
       }),
     })
   } catch (e) {
-    console.error(e)
-    return NextResponse.json({ error: 'サーバーエラーが発生しました' }, { status: 500 })
+    console.error('[GET /shifts エラー詳細]', e)
+    return NextResponse.json(
+      { error: 'サーバーエラーが発生しました', detail: String(e) },
+      { status: 500 }
+    )
   }
 }
 
@@ -101,22 +116,33 @@ export async function PUT(req: Request, { params }: Params) {
     if (title !== undefined) {
       await db.execute({
         sql: "UPDATE shifts SET title = ?, updated_at = datetime('now') WHERE id = ?",
-        args: [title.trim(), shift.id],
+        args: [title.trim(), Number(shift.id)],
       })
     }
     if (Array.isArray(slots)) {
-      await db.execute({ sql: 'DELETE FROM slots WHERE shift_id = ?', args: [shift.id] })
+      await db.execute({ sql: 'DELETE FROM slots WHERE shift_id = ?', args: [Number(shift.id)] })
+      // スロット変更時に既存参加者の回答もリセット
+      const partRes = await db.execute({
+        sql: 'SELECT id FROM participants WHERE shift_id = ?',
+        args: [Number(shift.id)],
+      })
+      for (const p of partRes.rows) {
+        await db.execute({
+          sql: 'DELETE FROM availabilities WHERE participant_id = ?',
+          args: [Number(p.id)],
+        })
+      }
       for (const slot of slots) {
         await db.execute({
           sql: 'INSERT INTO slots (shift_id, date, time_range, required_count) VALUES (?, ?, ?, ?)',
-          args: [shift.id, slot.date, slot.timeRange, slot.requiredCount ?? 1],
+          args: [Number(shift.id), slot.date, slot.timeRange, slot.requiredCount ?? 1],
         })
       }
     }
     return NextResponse.json({ ok: true })
   } catch (e) {
-    console.error(e)
-    return NextResponse.json({ error: 'サーバーエラーが発生しました' }, { status: 500 })
+    console.error('[PUT /shifts エラー詳細]', e)
+    return NextResponse.json({ error: 'サーバーエラーが発生しました', detail: String(e) }, { status: 500 })
   }
 }
 
@@ -135,13 +161,13 @@ export async function PATCH(req: Request, { params }: Params) {
       const newViewToken = randomUUID()
       await db.execute({
         sql: 'UPDATE shifts SET view_token = ? WHERE id = ?',
-        args: [newViewToken, shift.id],
+        args: [newViewToken, Number(shift.id)],
       })
       return NextResponse.json({ viewToken: newViewToken })
     }
     return NextResponse.json({ error: '不明なアクション' }, { status: 400 })
   } catch (e) {
-    console.error(e)
-    return NextResponse.json({ error: 'サーバーエラーが発生しました' }, { status: 500 })
+    console.error('[PATCH /shifts エラー詳細]', e)
+    return NextResponse.json({ error: 'サーバーエラーが発生しました', detail: String(e) }, { status: 500 })
   }
 }
