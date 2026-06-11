@@ -1,0 +1,29 @@
+{
+  "name": "shiftlink",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "node --experimental-sqlite node_modules/.bin/next dev 2>/dev/null || next dev",
+    "build": "node --experimental-sqlite node_modules/.bin/next build 2>/dev/null || next build",
+    "start": "node --experimental-sqlite node_modules/.bin/next start 2>/dev/null || next start"
+  },
+  "dependencies": {
+    "next": "^14.2.0",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0",
+    "uuid": "^9.0.0",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^2.5.1",
+    "clsx": "^2.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "@types/uuid": "^9.0.0",
+    "autoprefixer": "^10.4.0",
+    "postcss": "^8",
+    "tailwindcss": "^3.4.0",
+    "typescript": "^5"
+  }
+}
