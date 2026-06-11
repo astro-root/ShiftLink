@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getDB } from '@/lib/db'
-import { generateProposals } from '@/lib/algorithm'
+import { generateProposals, type AlgoSlot, type AlgoStaff, type AlgoPref } from '@/lib/algorithm'
 
 export const dynamic = 'force-dynamic'
 
@@ -38,26 +38,30 @@ export async function POST(_req: Request, { params }: Params) {
       availabilities = avRes.rows
     }
 
-    const proposalInput = {
-      slots: slots.map(s => ({
+    // timeRange "HH:MM-HH:MM" → startTime/endTime に分割
+    const algoSlots: AlgoSlot[] = slots.map(s => {
+      const [startTime, endTime] = (s.time_range as string).split('-')
+      return {
         id: Number(s.id),
         date: s.date as string,
-        timeRange: s.time_range as string,
+        startTime: startTime ?? '00:00',
+        endTime: endTime ?? '00:00',
         requiredCount: Number(s.required_count),
-      })),
-      participants: participants.map(p => ({
-        id: Number(p.id),
-        name: p.name as string,
-        availabilities: availabilities
-          .filter(a => a.participant_id === p.id)
-          .reduce((acc: Record<string, string>, a) => {
-            acc[String(a.slot_id)] = a.status as string
-            return acc
-          }, {}),
-      })),
-    }
+      }
+    })
 
-    const proposals = generateProposals(proposalInput)
+    const algoStaff: AlgoStaff[] = participants.map(p => ({
+      id: Number(p.id),
+      name: p.name as string,
+    }))
+
+    const algoPrefs: AlgoPref[] = availabilities.map(a => ({
+      staffId: Number(a.participant_id),
+      slotId: Number(a.slot_id),
+      status: (a.status as string) as any,
+    }))
+
+    const proposals = generateProposals(algoSlots, algoStaff, algoPrefs)
 
     await db.execute({ sql: 'DELETE FROM proposals WHERE shift_id = ?', args: [shift.id] })
     for (const proposal of proposals) {

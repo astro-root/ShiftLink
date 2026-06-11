@@ -33,7 +33,7 @@ export function generateProposals(
   ];
   return defs.map(({ title, s }) => {
     const assignments = build(slots, staff, getPref, s);
-    return { title, ...calcScore(assignments, getPref) };
+    return { title, assignments, ...calcScore(assignments, getPref) };
   });
 }
 
