@@ -126,7 +126,7 @@ export default function ShiftPage() {
   const deleteStaff = async (id: number) => {
     if (!confirm('削除しますか？')) return;
     try {
-      const res = await fetch(`/api/shifts/${token}/join?staffId=${id}`,{method:'DELETE'});
+      const res = await fetch(`/api/shifts/${token}/join`,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({participantId:id})});
       if (!res.ok) throw new Error();
       setStaff(p=>p.filter(s=>s.id!==id)); setPrefs(p=>p.filter(p=>p.staffId!==id));
       flash('✅ 削除しました');
@@ -161,7 +161,7 @@ export default function ShiftPage() {
     }catch{flash('❌ PDF出力に失敗しました');}
   };
   const copyLink = async (url:string) => {try{await navigator.clipboard.writeText(url);flash('✅ コピーしました');}catch{flash('❌ コピーに失敗しました');}};
-  const regenToken = async () => {try{const res=await fetch(`/api/shifts/${token}`,{method:'PATCH'});const d=await res.json();setViewToken(d.viewToken);flash('✅ 参加リンクを再発行しました');}catch{flash('❌ 再発行に失敗しました');}};
+  const regenToken = async () => {try{const res=await fetch(`/api/shifts/${token}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'regenerate_view_token'})});const d=await res.json();setViewToken(d.viewToken);flash('✅ 参加リンクを再発行しました');}catch{flash('❌ 再発行に失敗しました');}};
   const submitJoin = async () => {
     if(!partName.trim()){flash('⚠️ 名前を入力してください');return;}
     setSubmitting(true);
@@ -177,10 +177,10 @@ export default function ShiftPage() {
   const getStaffPref = (sid:number,slid:number):PrefStatus =>
     prefs.find(p=>p.staffId===sid&&p.slotId===slid)?.status??'available';
   const TABS = [
-    {label:'⚙️ 基本設定', count:null},
-    {label:'👥 参加状況', count:staff.length},
-    {label:'📋 候補案',   count:proposals.length||null},
-    {label:'🔗 共有・出力',count:null},
+    {label:'⚙️ 基本設定', short:'⚙️', count:null},
+    {label:'👥 参加状況', short:'👥', count:staff.length},
+    {label:'📋 候補案', short:'📋', count:proposals.length||null},
+    {label:'🔗 共有・出力', short:'🔗', count:null},
   ];
 
   if (loading) return (
@@ -217,7 +217,7 @@ export default function ShiftPage() {
     return (
       <div className="min-h-screen bg-slate-50">
         <header className="bg-gradient-to-r from-slate-900 via-indigo-950 to-violet-950 text-white">
-          <div className="max-w-2xl mx-auto px-5 py-8">
+          <div className="max-w-2xl mx-auto px-4 py-6">
             <p className="text-indigo-300 text-xs font-bold uppercase tracking-widest mb-2">シフト希望入力</p>
             <h1 className="text-2xl font-black">{shiftTitle}</h1>
           </div>
@@ -269,7 +269,7 @@ export default function ShiftPage() {
             })}
 
             <button onClick={submitJoin} disabled={submitting||!partName.trim()}
-              className="btn-primary w-full py-4 text-base">
+              className="btn-primary w-full py-4 text-base text-lg font-black rounded-2xl">
               {submitting ? '送信中…' : '✈️  希望を送信する'}
             </button>
           </>)}
@@ -328,14 +328,17 @@ export default function ShiftPage() {
                 </div>
               ))}
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               <input type="date" value={newSlot.date} onChange={e=>setNewSlot(p=>({...p,date:e.target.value}))} className="col-span-2 sm:col-span-1 input-base text-sm py-2"/>
               <input type="time" value={newSlot.startTime} onChange={e=>setNewSlot(p=>({...p,startTime:e.target.value}))} className="input-base text-sm py-2"/>
               <input type="time" value={newSlot.endTime} onChange={e=>setNewSlot(p=>({...p,endTime:e.target.value}))} className="input-base text-sm py-2"/>
               <div className="flex gap-2">
-                <select value={newSlot.requiredCount} onChange={e=>setNewSlot(p=>({...p,requiredCount:Number(e.target.value)}))} className="input-base text-sm py-2 flex-1">
-                  {[1,2,3,4,5,6].map(n=><option key={n} value={n}>{n}人</option>)}
-                </select>
+                <div className="flex items-center gap-1 input-base text-sm py-2 flex-1">
+                  <input type="number" min={1} max={99} value={newSlot.requiredCount}
+                    onChange={e=>setNewSlot(p=>({...p,requiredCount:Math.max(1,Number(e.target.value))}))}
+                    className="w-12 text-center bg-transparent outline-none font-bold text-indigo-600"/>
+                  <span className="text-slate-400 text-xs">人</span>
+                </div>
                 <button onClick={addSlot} className="btn-primary text-sm py-2 px-4 whitespace-nowrap">追加</button>
               </div>
             </div>
@@ -411,7 +414,7 @@ export default function ShiftPage() {
               <p className="text-sm text-slate-400">参加者の希望が集まったら「候補案を生成」してください</p>
             </div>
           ) : (
-            <div className="grid gap-4 lg:grid-cols-3">
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
               {proposals.map((prop,pi) => (
                 <div key={prop.id} onClick={()=>setSelProp(pi)}
                   className={`card p-5 cursor-pointer transition-all border-2 ${selProp===pi?'border-indigo-500 shadow-lg shadow-indigo-100/60 ring-2 ring-indigo-100':'border-transparent card-hover'}`}>
