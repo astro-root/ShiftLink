@@ -60,6 +60,7 @@ export async function GET(_req: Request, { params }: Params) {
       viewToken: shift.view_token,
       title: shift.title,
       isViewOnly,
+      isEditor: !isViewOnly,
       slots: slots.map(s => ({
         id: s.id,
         date: s.date,

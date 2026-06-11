@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 export const metadata: Metadata = {
-  title: 'ShiftLink',
+  title: 'ShiftLink | シフト作成・共有ツール',
   description: "シフト作成・共有ツール",
   icons: { icon: "/favicon.svg", apple: "/favicon.svg" },
 };
