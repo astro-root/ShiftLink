@@ -457,9 +457,9 @@ export default function ShiftPage() {
               <p className="text-sm text-slate-400">参加者の希望が集まったら「候補案を生成」してください</p>
             </div>
           ) : (
-            {(() => {
+            (() => {
               const seen = new Set<string>();
-              const unique = proposals.reduce<{prop: Proposal; pi: number}[]>((acc, prop, pi) => {
+              const unique = (proposals as Proposal[]).reduce((acc: {prop: Proposal; pi: number}[], prop: Proposal, pi: number) => {
                 const key = (prop.data?.assignments ?? []).map((a: PSlot) =>
                   `${a.slotId}:${[...a.assigned].sort((x,y)=>x.staffId-y.staffId).map(s=>s.staffId).join(',')}`
                 ).join('|');
@@ -503,8 +503,8 @@ export default function ShiftPage() {
                   ))}
                 </div>
               );
-            })()}
-          )}
+            })())
+          }
         </>)}
 
         {/* Tab 3 */}
