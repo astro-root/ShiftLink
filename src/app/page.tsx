@@ -254,7 +254,7 @@ export default function Home() {
             <span className="font-extrabold text-white tracking-tight">ShiftLink</span>
           </div>
           <p className="text-sm">シフト作成・共有ツール</p>
-          <p className="text-xs">© 2025 ShiftLink</p>
+          <p className="text-xs">© 2026 astro-root</p>
         </div>
       </footer>
     </div>
