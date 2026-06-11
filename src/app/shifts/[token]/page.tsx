@@ -92,10 +92,10 @@ export default function ShiftPage() {
         return r.json();
       })
       .then(d => {
-        setIsEditor(d.isEditor); setShiftTitle(d.shift.title); setEditTitle(d.shift.title);
+        setIsEditor(d.isEditor); setShiftTitle(d.title); setEditTitle(d.title);
         setSlots(d.slots); setEditSlots(d.slots.map((s:SSlot)=>({date:s.date,startTime:s.startTime,endTime:s.endTime,requiredCount:s.requiredCount})));
         setStaff(d.staff); setPrefs(d.preferences); setProposals(d.proposals);
-        setViewToken(d.shift.viewToken||''); setSelProp(0);
+        setViewToken(d.viewToken||''); setSelProp(0);
       })
       .catch(e=>setPageErr(e.message))
       .finally(()=>setLoading(false));
