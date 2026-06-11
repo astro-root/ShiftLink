@@ -116,7 +116,7 @@ export default function ShiftPage() {
   const saveSettings = async () => {
     setSaving(true);
     try {
-      const res = await fetch(`/api/shifts/${token}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:editTitle,slots:editSlots})});
+      const res = await fetch(`/api/shifts/${token}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:editTitle,slots:editSlots.map(s=>({date:s.date,timeRange:s.startTime+'-'+s.endTime,requiredCount:s.requiredCount}))})});
       if (!res.ok) throw new Error((await res.json()).error);
       setShiftTitle(editTitle); flash('✅ 保存しました');
     } catch(e:unknown){flash(`❌ ${e instanceof Error?e.message:'保存に失敗'}`);}
