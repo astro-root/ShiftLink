@@ -93,9 +93,18 @@ export default function Tab0Settings({
           <div>
             <label className="block text-xs font-bold text-slate-500 mb-1">必要人数</label>
             <div className="flex items-center gap-2 w-full border border-slate-200 rounded-xl px-4 bg-white" style={{ height: '48px' }}>
-              <input type="number" min={1} max={99} value={newSlot.requiredCount}
-                onChange={e => setNewSlot(p => ({ ...p, requiredCount: Math.max(1, Number(e.target.value)) }))}
-                className="w-14 text-center bg-transparent outline-none font-bold text-indigo-600 text-base" />
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                value={newSlot.requiredCount}
+                onChange={e => {
+                  const v = e.target.value.replace(/[^0-9]/g, '');
+                  if (v === '') return;
+                  const n = Math.min(99, Math.max(1, Number(v)));
+                  setNewSlot(p => ({ ...p, requiredCount: n }));
+                }}
+                className="w-16 text-center bg-transparent outline-none font-bold text-indigo-600 text-base" />
               <span className="text-slate-400 text-sm">人</span>
             </div>
           </div>
