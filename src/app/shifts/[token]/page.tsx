@@ -92,9 +92,13 @@ export default function ShiftPage() {
         return r.json();
       })
       .then(d => {
+        const slots = (d.slots||[]).map((s:any) => {
+          const [startTime='', endTime=''] = (s.timeRange||'').split('-');
+          return { ...s, startTime, endTime };
+        });
         setIsEditor(d.isEditor); setShiftTitle(d.title); setEditTitle(d.title);
-        setSlots(d.slots); setEditSlots(d.slots.map((s:SSlot)=>({date:s.date,startTime:s.startTime,endTime:s.endTime,requiredCount:s.requiredCount})));
-        setStaff(d.staff); setPrefs(d.preferences); setProposals(d.proposals);
+        setSlots(slots); setEditSlots(slots.map((s:SSlot)=>({date:s.date,startTime:s.startTime,endTime:s.endTime,requiredCount:s.requiredCount})));
+        setStaff(d.participants||[]); setPrefs(d.preferences||[]); setProposals(d.proposals||[]);
         setViewToken(d.viewToken||''); setSelProp(0);
       })
       .catch(e=>setPageErr(e.message))
