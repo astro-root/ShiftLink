@@ -69,11 +69,17 @@ export async function GET(_req: Request, { params }: Params) {
         requiredCount: s.required_count,
       })),
       participants,
-      proposals: proposalsRes.rows.map(p => ({
-        id: p.id,
-        data: JSON.parse(p.proposal_json as string),
-        createdAt: p.created_at,
-      })),
+      proposals: proposalsRes.rows.map(p => {
+        const d = JSON.parse(p.proposal_json as string);
+        return {
+          id: p.id,
+          title: d.title,
+          score: d.score,
+          coverageRate: d.coverageRate,
+          data: { assignments: d.assignments },
+          createdAt: p.created_at,
+        };
+      }),
     })
   } catch (e) {
     console.error(e)
