@@ -336,20 +336,40 @@ export default function ShiftPage() {
                 </div>
               ))}
             </div>
-            <div className="flex flex-col gap-2">
-              <input type="date" value={newSlot.date} onChange={e=>setNewSlot(p=>({...p,date:e.target.value}))} className="input-base text-sm py-3"/>
-              <div className="grid grid-cols-2 gap-2">
-                <input type="time" value={newSlot.startTime} onChange={e=>setNewSlot(p=>({...p,startTime:e.target.value}))} className="input-base text-sm py-3"/>
-                <input type="time" value={newSlot.endTime} onChange={e=>setNewSlot(p=>({...p,endTime:e.target.value}))} className="input-base text-sm py-3"/>
+            <div className="flex flex-col gap-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">日付</label>
+                <input type="date" value={newSlot.date} onChange={e=>setNewSlot(p=>({...p,date:e.target.value}))}
+                  style={{WebkitAppearance:'none',appearance:'none',height:'48px',lineHeight:'48px'}}
+                  className="w-full border border-slate-200 rounded-xl px-4 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"/>
               </div>
               <div className="grid grid-cols-2 gap-2">
-                <div className="flex items-center gap-2 input-base text-sm py-3">
-                  <input type="number" min={1} max={99} value={newSlot.requiredCount}
-                    onChange={e=>setNewSlot(p=>({...p,requiredCount:Math.max(1,Number(e.target.value))}))}
-                    className="w-14 text-center bg-transparent outline-none font-bold text-indigo-600 text-base"/>
-                  <span className="text-slate-400 text-sm">人必要</span>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">開始</label>
+                  <input type="time" value={newSlot.startTime} onChange={e=>setNewSlot(p=>({...p,startTime:e.target.value}))}
+                    style={{WebkitAppearance:'none',appearance:'none',height:'48px'}}
+                    className="w-full border border-slate-200 rounded-xl px-4 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"/>
                 </div>
-                <button onClick={addSlot} className="btn-primary text-sm py-3 w-full">＋ 追加</button>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">終了</label>
+                  <input type="time" value={newSlot.endTime} onChange={e=>setNewSlot(p=>({...p,endTime:e.target.value}))}
+                    style={{WebkitAppearance:'none',appearance:'none',height:'48px'}}
+                    className="w-full border border-slate-200 rounded-xl px-4 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"/>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">必要人数</label>
+                  <div className="flex items-center gap-2 w-full border border-slate-200 rounded-xl px-4 bg-white" style={{height:'48px'}}>
+                    <input type="number" min={1} max={99} value={newSlot.requiredCount}
+                      onChange={e=>setNewSlot(p=>({...p,requiredCount:Math.max(1,Number(e.target.value))}))}
+                      className="w-14 text-center bg-transparent outline-none font-bold text-indigo-600 text-base"/>
+                    <span className="text-slate-400 text-sm">人</span>
+                  </div>
+                </div>
+                <div className="flex items-end">
+                  <button onClick={addSlot} className="btn-primary text-sm w-full" style={{height:'48px'}}>＋ 追加</button>
+                </div>
               </div>
             </div>
             {editSlots.length>0 && <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-xl p-3 mt-3">⚠️ 日程を変更すると既存の参加者の希望がリセットされます。</p>}
