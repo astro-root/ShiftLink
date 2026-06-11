@@ -45,6 +45,7 @@ export async function GET(_req: Request, { params }: Params) {
     const participants = participantsRes.rows.map(p => ({
       id: p.id,
       name: p.name,
+      note: p.note ?? '',
       createdAt: p.created_at,
       availabilities: availabilities
         .filter(a => a.participant_id === p.id)

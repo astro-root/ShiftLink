@@ -36,6 +36,7 @@ export async function initDB() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       shift_id INTEGER NOT NULL,
       name TEXT NOT NULL,
+      note TEXT DEFAULT '',
       created_at TEXT DEFAULT (datetime('now'))
     )`,
     `CREATE TABLE IF NOT EXISTS availabilities (

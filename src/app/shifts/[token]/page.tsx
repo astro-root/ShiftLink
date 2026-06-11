@@ -4,7 +4,7 @@ import { useParams } from 'next/navigation';
 
 type PrefStatus = 'available' | 'preferred' | 'unavailable';
 interface SSlot  { id: number; date: string; startTime: string; endTime: string; requiredCount: number }
-interface SStaff { id: number; name: string }
+interface SStaff { id: number; name: string; note?: string }
 interface SPref  { staffId: number; slotId: number; status: PrefStatus }
 interface PSlot  { slotId: number; slotDate: string; slotStart: string; slotEnd: string; requiredCount: number; assigned: { staffId: number; name: string }[] }
 interface Proposal { id: number; title: string; score: number; coverageRate: number; data: { assignments: PSlot[] } }
@@ -78,6 +78,7 @@ export default function ShiftPage() {
   const [saving, setSaving]         = useState(false);
   const [generating, setGenerating] = useState(false);
   const [partName, setPartName]     = useState('');
+  const [partNote, setPartNote]     = useState('');
   const [partPrefs, setPartPrefs]   = useState<Map<number,PrefStatus>>(new Map());
   const [submitted, setSubmitted]   = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -166,7 +167,7 @@ export default function ShiftPage() {
     if(!partName.trim()){flash('⚠️ 名前を入力してください');return;}
     setSubmitting(true);
     try {
-      const res=await fetch(`/api/shifts/${token}/join`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:partName.trim(),preferences:slots.map(sl=>({slotId:sl.id,status:partPrefs.get(sl.id)??'available'}))})});
+      const res=await fetch(`/api/shifts/${token}/join`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:partName.trim(),note:partNote.trim(),preferences:slots.map(sl=>({slotId:sl.id,status:partPrefs.get(sl.id)??'available'}))})});
       const d=await res.json(); if(!res.ok) throw new Error(d.error);
       setSubmitted(true);
     }catch(e:unknown){flash(`❌ ${e instanceof Error?e.message:'送信に失敗しました'}`);}
@@ -207,7 +208,7 @@ export default function ShiftPage() {
           <p className="text-slate-500"><span className="font-bold text-indigo-600">{partName}</span> さんの希望を受け付けました。</p>
           <p className="text-slate-400 text-sm mt-1.5">管理者がシフトを確定するまでお待ちください。</p>
         </div>
-        <button onClick={()=>{setSubmitted(false);setPartPrefs(new Map());setPartName('');}}
+        <button onClick={()=>{setSubmitted(false);setPartPrefs(new Map());setPartName('');setPartNote('');}}
           className="text-sm text-indigo-500 hover:text-indigo-700 border border-indigo-200 rounded-xl px-5 py-2.5 hover:bg-indigo-50 transition font-medium">
           ✏️ 内容を修正して再送信
         </button>
@@ -227,7 +228,7 @@ export default function ShiftPage() {
           <div className={`fixed top-4 right-4 z-50 px-4 py-2.5 rounded-xl shadow-lg text-sm font-semibold pointer-events-none border ${msg.startsWith('✅')?'bg-emerald-50 text-emerald-800 border-emerald-100':'bg-red-50 text-red-700 border-red-100'}`}>{msg}</div>
         )}
 
-        <main className="max-w-2xl mx-auto px-4 py-7 space-y-4">
+        <main className="max-w-2xl mx-auto px-3 sm:px-4 py-5 sm:py-7 space-y-3 sm:space-y-4">
           {slots.length === 0 ? (
             <div className="card p-10 text-center">
               <div className="text-5xl mb-3">🗓️</div>
@@ -259,7 +260,7 @@ export default function ShiftPage() {
                   <div className="grid grid-cols-3 gap-2">
                     {(['preferred','available','unavailable'] as PrefStatus[]).map(status => (
                       <button key={status} onClick={()=>setPartPrefs(p=>new Map(p).set(slot.id,status))}
-                        className={`py-3 rounded-xl text-sm font-bold transition-all duration-150 ${cur===status ? PREF_BTN[status].active : PREF_BTN[status].inactive}`}>
+                        className={`py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-bold transition-all duration-150 ${cur===status ? PREF_BTN[status].active : PREF_BTN[status].inactive}`}>
                         {PREF_BTN[status].label}
                       </button>
                     ))}
@@ -268,6 +269,13 @@ export default function ShiftPage() {
               );
             })}
 
+            <div className="card p-5">
+              <label className="block text-sm font-bold text-slate-700 mb-2.5">📝 備考（任意）</label>
+              <textarea value={partNote} onChange={e=>setPartNote(e.target.value)}
+                placeholder="例: 土曜は午後のみ可、交通費支給をお願いしたい など"
+                rows={3}
+                className="w-full border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-slate-800 placeholder:text-slate-400 bg-white transition resize-none text-sm"/>
+            </div>
             <button onClick={submitJoin} disabled={submitting||!partName.trim()}
               className="btn-primary w-full py-4 text-base text-lg font-black rounded-2xl">
               {submitting ? '送信中…' : '✈️  希望を送信する'}
@@ -282,9 +290,9 @@ export default function ShiftPage() {
   return (
     <div className="min-h-screen bg-slate-50">
       <header className="bg-gradient-to-r from-slate-900 via-indigo-950 to-violet-950 text-white sticky top-0 z-30">
-        <div className="max-w-5xl mx-auto px-4 h-14 flex items-center gap-3">
+        <div className="max-w-5xl mx-auto px-3 h-14 flex items-center gap-2">
           <a href="/" className="text-indigo-300 hover:text-white text-sm font-medium shrink-0 transition">← Home</a>
-          <h1 className="font-black truncate flex-1 text-center tracking-tight">{shiftTitle}</h1>
+          <h1 className="font-black truncate flex-1 text-center tracking-tight text-sm sm:text-base">{shiftTitle}</h1>
           <span className="text-xs bg-indigo-500/30 border border-indigo-400/30 text-indigo-200 px-2.5 py-1 rounded-full font-semibold shrink-0">管理者</span>
         </div>
       </header>
@@ -307,7 +315,7 @@ export default function ShiftPage() {
         </div>
       </div>
 
-      <main className="max-w-5xl mx-auto px-4 py-6 space-y-4">
+      <main className="max-w-5xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-3 sm:space-y-4">
 
         {/* Tab 0 */}
         {activeTab===0 && (<>
@@ -328,7 +336,7 @@ export default function ShiftPage() {
                 </div>
               ))}
             </div>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <input type="date" value={newSlot.date} onChange={e=>setNewSlot(p=>({...p,date:e.target.value}))} className="col-span-2 sm:col-span-1 input-base text-sm py-2"/>
               <input type="time" value={newSlot.startTime} onChange={e=>setNewSlot(p=>({...p,startTime:e.target.value}))} className="input-base text-sm py-2"/>
               <input type="time" value={newSlot.endTime} onChange={e=>setNewSlot(p=>({...p,endTime:e.target.value}))} className="input-base text-sm py-2"/>
@@ -349,12 +357,12 @@ export default function ShiftPage() {
 
         {/* Tab 1 */}
         {activeTab===1 && (<>
-          <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
             <div>
               <h2 className="font-black text-slate-900 text-lg">{staff.length}名が回答済み</h2>
               <p className="text-sm text-slate-400 mt-0.5">参加リンクをシェアして希望を収集してください</p>
             </div>
-            <button onClick={genProposals} disabled={generating||staff.length===0} className="btn-primary text-sm py-2.5 flex items-center gap-2 shrink-0">
+            <button onClick={genProposals} disabled={generating||staff.length===0} className="btn-primary text-sm py-2.5 flex items-center justify-center gap-2 w-full sm:w-auto">
               {generating?'⏳ 生成中…':'🔄 候補案を生成'}
             </button>
           </div>
@@ -374,13 +382,18 @@ export default function ShiftPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-black text-slate-900 truncate">{s.name}</p>
-                      <p className="text-xs text-slate-400">{slots.length}件の日程</p>
+                      <p className="text-xs text-slate-400">{slots.length}件の日程{s.note ? ` ・ 備考あり` : ''}</p>
                     </div>
                     <button onClick={()=>deleteStaff(s.id)}
                       className="text-xs text-slate-300 hover:text-red-500 border border-slate-100 hover:border-red-100 hover:bg-red-50 px-3 py-1.5 rounded-lg transition font-semibold shrink-0">
                       削除
                     </button>
                   </div>
+                  {s.note && (
+                    <p className="text-xs text-slate-500 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 mb-2">
+                      📝 {s.note}
+                    </p>
+                  )}
                   {slots.length > 0 && (
                     <div className="flex flex-wrap gap-1.5">
                       {slots.map(sl => {
@@ -472,7 +485,7 @@ export default function ShiftPage() {
                   <span className="text-xs text-slate-400">スタッフに送るリンク</span>
                 </div>
                 <div className="flex gap-2">
-                  <input readOnly value={`${base}/shifts/${viewToken}`} className="flex-1 input-base text-sm bg-slate-50 min-w-0 cursor-text text-slate-600 font-mono"/>
+                  <input readOnly value={`${base}/shifts/${viewToken}`} className="flex-1 input-base text-xs sm:text-sm bg-slate-50 min-w-0 cursor-text text-slate-600 font-mono"/>
                   <button onClick={()=>copyLink(`${base}/shifts/${viewToken}`)} className="btn-secondary text-sm py-2 px-4 shrink-0">コピー</button>
                 </div>
                 <button onClick={regenToken} className="mt-1.5 text-xs text-red-400 hover:text-red-600 underline">参加リンクを再発行（現在のリンクは無効になります）</button>
@@ -483,7 +496,7 @@ export default function ShiftPage() {
                   <span className="text-xs text-slate-400">このページのURL</span>
                 </div>
                 <div className="flex gap-2">
-                  <input readOnly value={`${base}/shifts/${token}`} className="flex-1 input-base text-sm bg-slate-50 min-w-0 cursor-text text-slate-600 font-mono"/>
+                  <input readOnly value={`${base}/shifts/${token}`} className="flex-1 input-base text-xs sm:text-sm bg-slate-50 min-w-0 cursor-text text-slate-600 font-mono"/>
                   <button onClick={()=>copyLink(`${base}/shifts/${token}`)} className="btn-secondary text-sm py-2 px-4 shrink-0">コピー</button>
                 </div>
               </div>
@@ -505,7 +518,7 @@ export default function ShiftPage() {
                   ))}
                 </select>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <button onClick={exportImage} className="flex items-center justify-center gap-2 bg-violet-600 hover:bg-violet-500 active:bg-violet-700 text-white font-bold py-3 rounded-xl transition-all text-sm">🖼️ 画像で保存</button>
                 <button onClick={exportPDF}   className="flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-500 active:bg-rose-700 text-white font-bold py-3 rounded-xl transition-all text-sm">📄 PDFで保存</button>
               </div>

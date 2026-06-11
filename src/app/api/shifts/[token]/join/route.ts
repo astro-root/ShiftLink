@@ -15,7 +15,7 @@ export async function POST(req: Request, { params }: Params) {
     const shift = shiftRes.rows[0]
     if (!shift) return NextResponse.json({ error: 'シフトが見つかりません' }, { status: 404 })
 
-    const { name, availabilities } = await req.json()
+    const { name, note, availabilities } = await req.json()
     if (!name?.trim()) return NextResponse.json({ error: '名前を入力してください' }, { status: 400 })
 
     const existingRes = await db.execute({
@@ -32,8 +32,8 @@ export async function POST(req: Request, { params }: Params) {
       })
     } else {
       const insertRes = await db.execute({
-        sql: 'INSERT INTO participants (shift_id, name) VALUES (?, ?)',
-        args: [shift.id, name.trim()],
+        sql: 'INSERT INTO participants (shift_id, name, note) VALUES (?, ?, ?)',
+        args: [shift.id, name.trim(), note?.trim() ?? ''],
       })
       participantId = Number(insertRes.lastInsertRowid)
     }
