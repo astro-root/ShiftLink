@@ -82,10 +82,11 @@ export default function ShiftPage() {
   const [partPrefs, setPartPrefs]   = useState<Map<number,PrefStatus>>(new Map());
   const [submitted, setSubmitted]   = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [propDetailIdx, setPropDetailIdx] = useState<number|null>(null);
 
   const flash = useCallback((m: string) => { setMsg(m); setTimeout(()=>setMsg(''), 3200); },[]);
 
-  useEffect(() => {
+  const loadData = useCallback(() => {
     fetch(`/api/shifts/${token}`)
       .then(async r => {
         if (r.status === 404) throw new Error('シフトが見つかりません。URLを確認してください。');
@@ -105,6 +106,8 @@ export default function ShiftPage() {
       .catch(e=>setPageErr(e.message))
       .finally(()=>setLoading(false));
   }, [token]);
+
+  useEffect(() => { loadData(); }, [loadData]);
 
   const addSlot = () => {
     const {date,startTime,endTime,requiredCount} = newSlot;
@@ -384,9 +387,14 @@ export default function ShiftPage() {
               <h2 className="font-black text-slate-900 text-lg">{staff.length}名が回答済み</h2>
               <p className="text-sm text-slate-400 mt-0.5">参加リンクをシェアして希望を収集してください</p>
             </div>
-            <button onClick={genProposals} disabled={generating||staff.length===0} className="btn-primary text-sm py-2.5 flex items-center justify-center gap-2 w-full sm:w-auto">
-              {generating?'⏳ 生成中…':'🔄 候補案を生成'}
-            </button>
+            <div className="flex gap-2 w-full sm:w-auto">
+              <button onClick={loadData} className="btn-secondary text-sm py-2.5 px-4 flex items-center justify-center gap-1">
+                🔃 更新
+              </button>
+              <button onClick={genProposals} disabled={generating||staff.length===0} className="btn-primary text-sm py-2.5 flex items-center justify-center gap-2 flex-1 sm:flex-none">
+                {generating?'⏳ 生成中…':'💡 候補案を生成'}
+              </button>
+            </div>
           </div>
           {staff.length===0 ? (
             <div className="card p-12 text-center">
@@ -449,50 +457,53 @@ export default function ShiftPage() {
               <p className="text-sm text-slate-400">参加者の希望が集まったら「候補案を生成」してください</p>
             </div>
           ) : (
-            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-              {proposals.map((prop,pi) => (
-                <div key={prop.id} onClick={()=>setSelProp(pi)}
-                  className={`card p-5 cursor-pointer transition-all border-2 ${selProp===pi?'border-indigo-500 shadow-lg shadow-indigo-100/60 ring-2 ring-indigo-100':'border-transparent card-hover'}`}>
-                  <div className="flex items-start justify-between mb-3 gap-2">
-                    <h3 className="font-black text-slate-900">{prop.title}</h3>
-                    {selProp===pi && <span className="badge bg-indigo-100 text-indigo-700 shrink-0">選択中 ✓</span>}
-                  </div>
-
-                  {/* Score bars */}
-                  <div className="space-y-2 mb-4">
-                    <div>
-                      <div className="flex justify-between text-xs mb-1">
-                        <span className="text-slate-400 font-medium">希望適合率</span>
-                        <span className="font-black text-emerald-600">{prop.score}%</span>
+            {(() => {
+              const seen = new Set<string>();
+              const unique = proposals.reduce<{prop: Proposal; pi: number}[]>((acc, prop, pi) => {
+                const key = (prop.data?.assignments ?? []).map((a: PSlot) =>
+                  `${a.slotId}:${[...a.assigned].sort((x,y)=>x.staffId-y.staffId).map(s=>s.staffId).join(',')}`
+                ).join('|');
+                if (!seen.has(key)) { seen.add(key); acc.push({prop, pi}); }
+                return acc;
+              }, []);
+              return (
+                <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                  {unique.map(({prop, pi}) => (
+                    <div key={prop.id} onClick={()=>setSelProp(pi)}
+                      className={`card p-5 cursor-pointer transition-all border-2 ${selProp===pi?'border-indigo-500 shadow-lg shadow-indigo-100/60 ring-2 ring-indigo-100':'border-transparent card-hover'}`}>
+                      <div className="flex items-start justify-between mb-3 gap-2">
+                        <h3 className="font-black text-slate-900">{prop.title}</h3>
+                        {selProp===pi && <span className="badge bg-indigo-100 text-indigo-700 shrink-0">選択中 ✓</span>}
                       </div>
-                      <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                        <div className="h-full bg-gradient-to-r from-emerald-400 to-teal-400 rounded-full transition-all" style={{width:`${prop.score}%`}}/>
+                      <div className="space-y-2 mb-4">
+                        <div>
+                          <div className="flex justify-between text-xs mb-1">
+                            <span className="text-slate-400 font-medium">希望適合率</span>
+                            <span className="font-black text-emerald-600">{prop.score}%</span>
+                          </div>
+                          <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-gradient-to-r from-emerald-400 to-teal-400 rounded-full transition-all" style={{width:`${prop.score}%`}}/>
+                          </div>
+                        </div>
+                        <div>
+                          <div className="flex justify-between text-xs mb-1">
+                            <span className="text-slate-400 font-medium">充足率</span>
+                            <span className={`font-black ${prop.coverageRate<100?'text-red-500':'text-indigo-600'}`}>{prop.coverageRate}%</span>
+                          </div>
+                          <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                            <div className={`h-full rounded-full transition-all ${prop.coverageRate<100?'bg-gradient-to-r from-red-400 to-orange-400':'bg-gradient-to-r from-indigo-400 to-violet-400'}`} style={{width:`${prop.coverageRate}%`}}/>
+                          </div>
+                        </div>
                       </div>
+                      <button onClick={e=>{e.stopPropagation();setPropDetailIdx(pi);}}
+                        className="w-full text-xs text-indigo-600 border border-indigo-200 hover:bg-indigo-50 rounded-lg py-2 font-semibold transition mt-1">
+                        詳細を見る →
+                      </button>
                     </div>
-                    <div>
-                      <div className="flex justify-between text-xs mb-1">
-                        <span className="text-slate-400 font-medium">充足率</span>
-                        <span className={`font-black ${prop.coverageRate<100?'text-red-500':'text-indigo-600'}`}>{prop.coverageRate}%</span>
-                      </div>
-                      <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                        <div className={`h-full rounded-full transition-all ${prop.coverageRate<100?'bg-gradient-to-r from-red-400 to-orange-400':'bg-gradient-to-r from-indigo-400 to-violet-400'}`} style={{width:`${prop.coverageRate}%`}}/>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    {prop.data.assignments.map((a,ai)=>(
-                      <div key={ai} className={`flex items-start gap-2 text-xs p-2 rounded-lg ${a.assigned.length<a.requiredCount?'bg-red-50':'bg-slate-50'}`}>
-                        <span className="font-semibold text-slate-500 shrink-0">{fmtDate(a.slotDate)}</span>
-                        <span className={a.assigned.length>0?'text-slate-700':'text-red-400 font-medium'}>
-                          {a.assigned.length>0?a.assigned.map(s=>s.name).join('、'):'未割当'}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              );
+            })()}
           )}
         </>)}
 
@@ -548,6 +559,42 @@ export default function ShiftPage() {
           </div>
         </>)}
       </main>
+
+      {propDetailIdx !== null && proposals[propDetailIdx] && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 backdrop-blur-sm" onClick={()=>setPropDetailIdx(null)}>
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg max-h-[85vh] overflow-y-auto" onClick={e=>e.stopPropagation()}>
+            <div className="sticky top-0 bg-white border-b border-slate-100 px-5 py-4 flex items-center justify-between rounded-t-2xl">
+              <div>
+                <h3 className="font-black text-slate-900">{proposals[propDetailIdx].title}</h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  希望適合率 {proposals[propDetailIdx].score}% ／ 充足率 {proposals[propDetailIdx].coverageRate}%
+                </p>
+              </div>
+              <button onClick={()=>setPropDetailIdx(null)}
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition font-bold text-xl">×</button>
+            </div>
+            <div className="p-5 space-y-2">
+              {(proposals[propDetailIdx].data?.assignments ?? []).map((a: PSlot, ai: number) => (
+                <div key={ai} className={`flex items-start gap-3 p-3 rounded-xl ${a.assigned.length<a.requiredCount?'bg-red-50 border border-red-100':'bg-slate-50'}`}>
+                  <div className="shrink-0 min-w-[80px]">
+                    <p className="font-bold text-slate-700 text-sm">{fmtDate(a.slotDate)}</p>
+                    <p className="text-xs text-slate-400">{a.slotStart}〜{a.slotEnd}</p>
+                  </div>
+                  <div className="flex-1">
+                    <p className={`text-sm font-semibold ${a.assigned.length>0?'text-slate-800':'text-red-500'}`}>
+                      {a.assigned.length>0 ? a.assigned.map(s=>s.name).join('、') : '未割当'}
+                    </p>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      {a.assigned.length}/{a.requiredCount}名
+                      {a.assigned.length<a.requiredCount && <span className="text-red-400 ml-1">（{a.requiredCount-a.assigned.length}名不足）</span>}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
