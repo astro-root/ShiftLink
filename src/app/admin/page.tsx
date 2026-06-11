@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 
 interface ShiftRow {
   id: number; token: string; view_token: string; title: string;
@@ -18,12 +18,18 @@ export default function AdminPage() {
 
   const login = async () => {
     setLoading(true); setErr('');
-    const res = await fetch('/api/admin/shifts', { headers: { 'x-admin-password': pw } });
-    if (res.ok) {
-      const d = await res.json();
-      setShifts(d.shifts); setAuthed(true);
-    } else {
-      setErr('パスワードが違います');
+    try {
+      const res = await fetch('/api/admin/shifts', {
+        headers: { 'x-admin-password': pw }
+      });
+      if (res.ok) {
+        const d = await res.json();
+        setShifts(d.shifts); setAuthed(true);
+      } else {
+        setErr('パスワードが違います');
+      }
+    } catch {
+      setErr('接続に失敗しました');
     }
     setLoading(false);
   };
@@ -64,28 +70,28 @@ export default function AdminPage() {
   );
 
   return (
-    <div className="min-h-screen bg-slate-900 text-white p-6">
-      {msg && <div className="fixed top-4 right-4 bg-slate-700 text-white px-4 py-2 rounded-xl text-sm">{msg}</div>}
+    <div className="min-h-screen bg-slate-900 text-white p-4 sm:p-6">
+      {msg && <div className="fixed top-4 right-4 bg-slate-700 text-white px-4 py-2 rounded-xl text-sm z-50">{msg}</div>}
       <div className="max-w-5xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="font-black text-2xl">🔐 Admin Panel</h1>
-            <p className="text-slate-400 text-sm mt-0.5">全シフト一覧 — {shifts.length}件</p>
+            <p className="text-slate-400 text-sm mt-0.5">全シフト — {shifts.length}件</p>
           </div>
-          <button onClick={reload} className="text-sm text-slate-400 hover:text-white border border-slate-700 rounded-xl px-4 py-2 transition">
+          <button onClick={reload}
+            className="text-sm text-slate-400 hover:text-white border border-slate-700 rounded-xl px-4 py-2 transition">
             🔄 更新
           </button>
         </div>
         <div className="space-y-3">
           {shifts.map(s => (
-            <div key={s.id} className="bg-slate-800 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center gap-4">
+            <div key={s.id} className="bg-slate-800 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
               <div className="flex-1 min-w-0">
                 <p className="font-black text-lg truncate">{s.title}</p>
                 <p className="text-slate-400 text-xs mt-0.5">
-                  作成: {new Date(s.created_at).toLocaleString('ja-JP')} ·
-                  参加者 {s.participant_count}人 · スロット {s.slot_count}件
+                  {new Date(s.created_at).toLocaleString('ja-JP')} · 参加者 {s.participant_count}人 · スロット {s.slot_count}件
                 </p>
-                <p className="text-slate-600 text-xs mt-1 font-mono truncate">token: {s.token}</p>
+                <p className="text-slate-600 text-xs mt-1 font-mono truncate">{s.token}</p>
               </div>
               <div className="flex gap-2 shrink-0">
                 <a href={`/shifts/${s.token}`} target="_blank"
