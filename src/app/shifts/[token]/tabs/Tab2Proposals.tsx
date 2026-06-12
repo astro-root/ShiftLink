@@ -1,5 +1,6 @@
 'use client';
 import type { Proposal, PSlot } from '../types';
+import { RefreshCw } from 'lucide-react';
 
 interface Props {
   proposals: Proposal[];
@@ -27,7 +28,7 @@ export default function Tab2Proposals({
       <p className="text-sm text-slate-500 flex-1">参加者の希望をもとに3種類の最適案を生成します。カードをクリックして選択し、出力タブから保存できます。</p>
       <button onClick={onGenProposals} disabled={generating}
         className="btn-primary text-sm py-2.5 whitespace-nowrap shrink-0">
-        {generating ? '⏳ 生成中…' : '🔄 候補案を生成'}
+        {generating ? '生成中…' : (<><RefreshCw className="w-3.5 h-3.5" /> 候補案を生成</>)}
       </button>
     </div>
     {proposals.length === 0 ? (

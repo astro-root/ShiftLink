@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import type { SSlot, SStaff, SPref, Proposal, EditSlot } from './types';
+import { Settings, Users, ClipboardList, Share2 } from 'lucide-react';
 import ParticipantView from './ParticipantView';
 import ProposalDetailModal from './ProposalDetailModal';
 import Tab0Settings from './tabs/Tab0Settings';
@@ -94,10 +95,10 @@ export default function ShiftPage() {
   };
 
   const TABS = [
-    { label: '⚙️ 基本設定', short: '⚙️', count: null },
-    { label: '👥 参加状況', short: '👥', count: staff.length },
-    { label: '📋 候補案',   short: '📋', count: proposals.length || null },
-    { label: '🔗 共有・出力', short: '🔗', count: null },
+    { label: '基本設定', Icon: Settings,     count: null },
+    { label: '参加状況', Icon: Users,         count: staff.length },
+    { label: '候補案',   Icon: ClipboardList, count: proposals.length || null },
+    { label: '共有・出力', Icon: Share2,      count: null },
   ];
 
   if (loading) return (
@@ -141,7 +142,8 @@ export default function ShiftPage() {
         <div className="max-w-5xl mx-auto flex overflow-x-auto">
           {TABS.map((t, i) => (
             <button key={i} onClick={() => setActiveTab(i)}
-              className={`flex items-center gap-2 px-5 py-3.5 text-sm font-semibold whitespace-nowrap transition border-b-2 ${activeTab === i ? 'border-indigo-600 text-indigo-600 bg-indigo-50/50' : 'border-transparent text-slate-400 hover:text-slate-700 hover:bg-slate-50'}`}>
+              className={`flex items-center gap-1.5 px-4 py-3.5 text-sm font-semibold whitespace-nowrap transition border-b-2 ${activeTab === i ? 'border-indigo-600 text-indigo-600 bg-indigo-50/50' : 'border-transparent text-slate-400 hover:text-slate-700 hover:bg-slate-50'}`}>
+              <t.Icon className="w-4 h-4 shrink-0" />
               {t.label}
               {t.count != null && t.count > 0 && (
                 <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${activeTab === i ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-500'}`}>{t.count}</span>

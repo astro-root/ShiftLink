@@ -1,5 +1,6 @@
 'use client';
 import type { SSlot, SStaff, SPref, PrefStatus } from '../types';
+import { RefreshCw, Lightbulb } from 'lucide-react';
 import { fmtDate, PREF_BADGE, AVATAR_COLORS } from '../utils';
 
 interface Props {
@@ -27,12 +28,12 @@ export default function Tab1Participants({
         <p className="text-sm text-slate-400 mt-0.5">参加リンクをシェアして希望を収集してください</p>
       </div>
       <div className="flex gap-2 w-full sm:w-auto">
-        <button onClick={onLoadData} className="btn-secondary text-sm py-2.5 px-4 flex items-center justify-center gap-1">
-          🔃 更新
+        <button onClick={onLoadData} className="btn-secondary text-sm py-2.5 px-4 flex items-center justify-center gap-1.5">
+          <RefreshCw className="w-3.5 h-3.5" /> 更新
         </button>
         <button onClick={onGenProposals} disabled={generating || staff.length === 0}
-          className="btn-primary text-sm py-2.5 flex items-center justify-center gap-2 flex-1 sm:flex-none">
-          {generating ? '⏳ 生成中…' : '💡 候補案を生成'}
+          className="btn-primary text-sm py-2.5 flex items-center justify-center gap-1.5 flex-1 sm:flex-none">
+          {generating ? '生成中…' : (<><Lightbulb className="w-3.5 h-3.5" /> 候補案を生成</>)}
         </button>
       </div>
     </div>

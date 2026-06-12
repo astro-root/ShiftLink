@@ -1,5 +1,6 @@
 'use client';
 import type { Proposal } from '../types';
+import { ImageIcon, FileText } from 'lucide-react';
 import { buildExportHtml } from '../utils';
 
 interface Props {
@@ -118,8 +119,12 @@ export default function Tab3Share({
           </select>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <button onClick={exportImage} className="flex items-center justify-center gap-2 bg-violet-600 hover:bg-violet-500 active:bg-violet-700 text-white font-bold py-3 rounded-xl transition-all text-sm">🖼️ 画像で保存</button>
-          <button onClick={exportPDF} className="flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-500 active:bg-rose-700 text-white font-bold py-3 rounded-xl transition-all text-sm">📄 PDFで保存</button>
+          <button onClick={exportImage} className="flex items-center justify-center gap-2 bg-violet-600 hover:bg-violet-500 active:bg-violet-700 text-white font-bold py-3 rounded-xl transition-all text-sm">
+            <ImageIcon className="w-4 h-4" /> 画像で保存
+          </button>
+          <button onClick={exportPDF} className="flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-500 active:bg-rose-700 text-white font-bold py-3 rounded-xl transition-all text-sm">
+            <FileText className="w-4 h-4" /> PDFで保存
+          </button>
         </div>
       </>)}
     </div>
