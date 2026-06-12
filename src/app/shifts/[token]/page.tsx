@@ -3,7 +3,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import type { SSlot, SStaff, SPref, Proposal, EditSlot } from './types';
 import { Settings, Users, ClipboardList, Share2 } from 'lucide-react';
-import { Settings, Users, ClipboardList, Share2 } from 'lucide-react';
 import ParticipantView from './ParticipantView';
 import ProposalDetailModal from './ProposalDetailModal';
 import Tab0Settings from './tabs/Tab0Settings';
