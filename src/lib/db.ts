@@ -55,6 +55,15 @@ export async function initDB() {
     )`,
   ]
 
+    \`CREATE TABLE IF NOT EXISTS contacts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT DEFAULT '',
+      email TEXT NOT NULL,
+      message TEXT NOT NULL,
+      created_at TEXT DEFAULT (datetime('now'))
+    )\`,
+  ]
+
   for (const sql of ddl) {
     await db.execute(sql)
   }

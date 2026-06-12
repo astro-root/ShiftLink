@@ -64,6 +64,63 @@ function FaqItem({ q, a }: { q: string; a: string }) {
   );
 }
 
+function ContactForm() {
+  const [name, setName]       = useState('');
+  const [email, setEmail]     = useState('');
+  const [message, setMessage] = useState('');
+  const [sending, setSending] = useState(false);
+  const [sent, setSent]       = useState(false);
+  const [err, setErr]         = useState('');
+
+  const submit = async () => {
+    if (!email.trim() || !message.trim()) { setErr('メールアドレスとお問い合わせ内容は必須です'); return; }
+    setSending(true); setErr('');
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name.trim(), email: email.trim(), message: message.trim() }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+      setSent(true);
+    } catch (e: unknown) {
+      setErr(e instanceof Error ? e.message : '送信に失敗しました。しばらく経ってから再度お試しください。');
+    } finally { setSending(false); }
+  };
+
+  if (sent) return (
+    <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-8 text-center">
+      <div className="text-4xl mb-3">✅</div>
+      <h3 className="font-black text-emerald-800 text-lg mb-1">送信しました</h3>
+      <p className="text-emerald-600 text-sm">お問い合わせありがとうございます。内容を確認の上、ご返信します。</p>
+    </div>
+  );
+
+  return (
+    <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-100 shadow-sm space-y-4">
+      <div>
+        <label className="block text-xs font-bold text-slate-600 mb-1.5">お名前（任意）</label>
+        <input value={name} onChange={e => setName(e.target.value)} placeholder="田中 太郎" className="input-base text-sm" />
+      </div>
+      <div>
+        <label className="block text-xs font-bold text-slate-600 mb-1.5">メールアドレス <span className="text-red-500">*</span></label>
+        <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="example@email.com" className="input-base text-sm" />
+      </div>
+      <div>
+        <label className="block text-xs font-bold text-slate-600 mb-1.5">お問い合わせ内容 <span className="text-red-500">*</span></label>
+        <textarea value={message} onChange={e => setMessage(e.target.value)}
+          placeholder="ご質問・ご要望・バグ報告などをご記入ください"
+          rows={4}
+          className="w-full border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-slate-800 placeholder:text-slate-400 bg-white transition resize-none text-sm" />
+      </div>
+      {err && <p className="text-red-500 text-sm">{err}</p>}
+      <button onClick={submit} disabled={sending || !email.trim() || !message.trim()}
+        className="w-full bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-black py-4 rounded-xl text-sm transition-all disabled:opacity-60">
+        {sending ? '送信中…' : '送信する →'}
+      </button>
+    </div>
+  );
+}
+
 export default function Home() {
   const router = useRouter();
   const createRef = useRef<HTMLDivElement>(null);
@@ -285,30 +342,31 @@ export default function Home() {
             {FAQS.map((f, i) => <FaqItem key={i} {...f} />)}
           </div>
           <p className="text-center text-sm text-slate-400 mt-8">
-            解決しない場合は
-            <a href="https://github.com/astro-root/ShiftLink/issues"
-              target="_blank" rel="noopener"
-              className="text-indigo-500 hover:underline ml-1 font-semibold">
-              GitHubのIssue
-            </a>
-            からお問い合わせください。
+            解決しない場合は下のフォームからお問い合わせください。
           </p>
         </div>
       </section>
 
-      {/* ── Footer ────────────────────────────────────── */}
+      {/* ── Contact ─────────────────────────────────────── */}
+      <section className="py-16 sm:py-20 bg-slate-50">
+        <div className="max-w-xl mx-auto px-4">
+          <div className="text-center mb-10">
+            <p className="text-xs font-black text-indigo-500 uppercase tracking-[0.15em] mb-2">CONTACT</p>
+            <h2 className="text-2xl sm:text-3xl font-black text-slate-900 mb-2">お問い合わせ</h2>
+            <p className="text-slate-400 text-sm">ご質問・ご要望・バグ報告などお気軽にどうぞ</p>
+          </div>
+          <ContactForm />
+        </div>
+      </section>
+
+            {/* ── Footer ────────────────────────────────────── */}
       <footer className="bg-slate-950 text-slate-500 py-10">
         <div className="max-w-5xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm">
           <div className="flex items-center gap-2">
             <span>📅</span>
             <span className="font-black text-white tracking-tight">ShiftLink</span>
           </div>
-          <div className="flex items-center gap-6 text-xs">
-            <a href="https://github.com/astro-root/ShiftLink/issues" target="_blank" rel="noopener"
-              className="hover:text-slate-300 transition">お問い合わせ</a>
-            <a href="https://github.com/astro-root/ShiftLink" target="_blank" rel="noopener"
-              className="hover:text-slate-300 transition">GitHub</a>
-          </div>
+
           <p className="text-xs">© 2026 astro-root</p>
         </div>
       </footer>
