@@ -55,6 +55,15 @@ export default function ShiftPage() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
+  // ページタイトルをシフト名に合わせて更新
+  useEffect(() => {
+    if (!shiftTitle) return;
+    document.title = isEditor
+      ? `${shiftTitle} | ShiftLink 管理`
+      : `${shiftTitle} | シフト希望入力 | ShiftLink`;
+    return () => { document.title = 'ShiftLink | シフト作成・共有ツール'; };
+  }, [shiftTitle, isEditor]);
+
   const deleteStaff = async (id: number) => {
     if (!confirm('削除しますか？')) return;
     try {

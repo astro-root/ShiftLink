@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface ShiftRow {
   id: number; token: string; view_token: string; title: string;
@@ -15,6 +15,11 @@ export default function AdminPage() {
   const [msg, setMsg]         = useState('');
 
   const flash = (m: string) => { setMsg(m); setTimeout(() => setMsg(''), 3000); };
+
+  useEffect(() => {
+    document.title = 'Admin | ShiftLink';
+    return () => { document.title = 'ShiftLink | シフト作成・共有ツール'; };
+  }, []);
 
   const login = async () => {
     setLoading(true); setErr('');
