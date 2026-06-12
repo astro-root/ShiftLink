@@ -16,7 +16,6 @@ export function getClient(): Client {
 
 export async function initDB() {
   const db = getClient()
-
   const ddl = [
     `CREATE TABLE IF NOT EXISTS shifts (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -53,31 +52,22 @@ export async function initDB() {
       proposal_json TEXT NOT NULL,
       created_at TEXT DEFAULT (datetime('now'))
     )`,
-  ]
-
-    \`CREATE TABLE IF NOT EXISTS contacts (
+    `CREATE TABLE IF NOT EXISTS contacts (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT DEFAULT '',
       email TEXT NOT NULL,
       message TEXT NOT NULL,
       created_at TEXT DEFAULT (datetime('now'))
-    )\`,
+    )`,
   ]
-
   for (const sql of ddl) {
     await db.execute(sql)
   }
-
-  // マイグレーション: 既存テーブルへのカラム追加（エラーは無視）
   const migrations = [
     "ALTER TABLE participants ADD COLUMN note TEXT DEFAULT ''",
   ]
   for (const sql of migrations) {
-    try {
-      await db.execute(sql)
-    } catch {
-      // duplicate column name など既適用済みのマイグレーションは無視
-    }
+    try { await db.execute(sql) } catch {}
   }
 }
 
