@@ -1,6 +1,7 @@
 'use client';
 import type { Proposal, PSlot } from '../types';
 import { RefreshCw } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 
 interface Props {
   proposals: Proposal[];

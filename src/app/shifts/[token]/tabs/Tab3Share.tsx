@@ -1,6 +1,7 @@
 'use client';
 import type { Proposal } from '../types';
 import { ImageIcon, FileText } from 'lucide-react';
+import { ImageIcon, FileText } from 'lucide-react';
 import { buildExportHtml } from '../utils';
 
 interface Props {

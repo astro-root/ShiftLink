@@ -1,6 +1,7 @@
 'use client';
 import type { SSlot, SStaff, SPref, PrefStatus } from '../types';
 import { RefreshCw, Lightbulb } from 'lucide-react';
+import { RefreshCw, Lightbulb } from 'lucide-react';
 import { fmtDate, PREF_BADGE, AVATAR_COLORS } from '../utils';
 
 interface Props {
